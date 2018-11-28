@@ -56,6 +56,10 @@ public class AdvancedConfigPage extends Page {
         return getWithWait(xpath("//div[@gt-label='Max profile samples per transaction']//input"));
     }
 
+    public WebElement getMaxTracesStoredPerMinuteTextField() {
+        return getWithWait(xpath("//div[@gt-label='Max traces stored per minute']//input"));
+    }
+
     public void clickSaveButton() {
         clickWithWait(xpath("//button[normalize-space()='Save changes']"));
     }

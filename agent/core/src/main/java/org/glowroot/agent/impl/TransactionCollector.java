@@ -18,9 +18,12 @@ package org.glowroot.agent.impl;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -52,6 +55,7 @@ public class TransactionCollector {
     private static final int PENDING_LIMIT = 100;
 
     private final ExecutorService dedicatedExecutor;
+    private final ConfigService configService;
     private final Collector collector;
     private final Clock clock;
     private final Ticker ticker;
@@ -64,9 +68,12 @@ public class TransactionCollector {
     private Map<String, SlowThresholdOverridesForType> slowThresholdOverrides = ImmutableMap.of();
     // visibility is provided by memoryBarrier in org.glowroot.config.ConfigService
     private long defaultSlowThresholdNanos;
+    private final ConcurrentMap<String, PerFiveSecondsRateLimiter> collectionRateLimiters =
+            Maps.newConcurrentMap();
 
     public TransactionCollector(final ConfigService configService, Collector collector, Clock clock,
             Ticker ticker) {
+        this.configService = configService;
         this.collector = collector;
         this.clock = clock;
         this.ticker = ticker;
@@ -127,12 +134,29 @@ public class TransactionCollector {
         if (!slow && !shouldStoreError(transaction)) {
             return;
         }
-        // limit doesn't apply to transactions that were already (partially) stored to make sure
-        // they don't get left out in case they cause an avalanche of slowness
-        if (pendingTransactions.size() >= PENDING_LIMIT && !transaction.isPartiallyStored()) {
-            backPressureLogger.warn("not storing a trace because of an excessive backlog of {}"
-                    + " traces already waiting to be stored", PENDING_LIMIT);
-            return;
+        // limits don't apply to transactions that were already (partially) stored to make sure they
+        // don't get left out in case they cause an avalanche of slowness
+        if (!transaction.isPartiallyStored()) {
+            String transactionType = transaction.getTransactionType();
+            PerFiveSecondsRateLimiter rateLimiter = collectionRateLimiters.get(transactionType);
+            if (rateLimiter == null) {
+                int maxTracesStoredPerFiveSeconds = (int) Math
+                        .ceil(configService.getAdvancedConfig().maxTracesStoredPerMinute() / 12.0);
+                rateLimiter = new PerFiveSecondsRateLimiter(maxTracesStoredPerFiveSeconds);
+                collectionRateLimiters.putIfAbsent(transactionType, rateLimiter);
+                // need default in case it was just cleared after the put in line above
+                rateLimiter = MoreObjects.firstNonNull(collectionRateLimiters.get(transactionType),
+                        rateLimiter);
+            }
+            if (!rateLimiter.tryAcquire(1, transaction.getCaptureTime(),
+                    transaction.getStartTime())) {
+                return;
+            }
+            if (pendingTransactions.size() >= PENDING_LIMIT) {
+                backPressureLogger.warn("not storing a trace because of an excessive backlog of {}"
+                        + " traces already waiting to be stored", PENDING_LIMIT);
+                return;
+            }
         }
         pendingTransactions.add(transaction);
         dedicatedExecutor.execute(new Runnable() {
@@ -206,6 +230,7 @@ public class TransactionCollector {
             TransactionCollector.this.slowThresholdOverrides = ImmutableMap.copyOf(builder);
             defaultSlowThresholdNanos =
                     MILLISECONDS.toNanos(transactionConfig.slowThresholdMillis());
+            collectionRateLimiters.clear();
         }
     }
 
@@ -228,6 +253,40 @@ public class TransactionCollector {
                     .defaultThresholdNanos(defaultThresholdNanos)
                     .putAllThresholdNanos(thresholdNanos)
                     .build();
+        }
+    }
+
+    private static class PerFiveSecondsRateLimiter {
+
+        private final int permitsPerFiveSeconds;
+
+        private final AtomicInteger available = new AtomicInteger();
+        private volatile long lastPermitResetTime;
+        private volatile long oldestStartTime;
+
+        private PerFiveSecondsRateLimiter(int availablePerFiveSeconds) {
+            this.permitsPerFiveSeconds = availablePerFiveSeconds;
+        }
+
+        private boolean tryAcquire(int permits, long captureTime, long startTime) {
+            if (available.getAndAdd(-permits) > 0) {
+                if (startTime < oldestStartTime) {
+                    oldestStartTime = startTime;
+                }
+                return true;
+            }
+            if (captureTime - lastPermitResetTime > 5000) {
+                available.set(permitsPerFiveSeconds - permits);
+                lastPermitResetTime = captureTime;
+                oldestStartTime = startTime;
+                return true;
+            }
+            if (startTime <= oldestStartTime) {
+                // special case to avoid missing long-running "root cause" traces
+                oldestStartTime = startTime;
+                return true;
+            }
+            return false;
         }
     }
 }

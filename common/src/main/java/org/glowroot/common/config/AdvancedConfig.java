@@ -38,6 +38,7 @@ public abstract class AdvancedConfig {
     }
 
     // used to limit memory requirement
+    // (applied per transaction type)
     @Value.Default
     public int maxTransactionAggregates() {
         return ConfigDefaults.ADVANCED_MAX_TRANSACTION_AGGREGATES;
@@ -69,6 +70,13 @@ public abstract class AdvancedConfig {
         return 50000;
     }
 
+    // used to limit effect of spikes on the collector and storage
+    // (applied per transaction type)
+    @Value.Default
+    public int maxTracesStoredPerMinute() {
+        return 600;
+    }
+
     @Value.Default
     public int mbeanGaugeNotFoundDelaySeconds() {
         return 60;
@@ -89,6 +97,7 @@ public abstract class AdvancedConfig {
                 .setMaxServiceCallAggregates(of(maxServiceCallAggregates()))
                 .setMaxTraceEntriesPerTransaction(of(maxTraceEntriesPerTransaction()))
                 .setMaxProfileSamplesPerTransaction(of(maxProfileSamplesPerTransaction()))
+                .setMaxTracesStoredPerMinute(of(maxTracesStoredPerMinute()))
                 .setMbeanGaugeNotFoundDelaySeconds(of(mbeanGaugeNotFoundDelaySeconds()))
                 .setWeavingTimer(weavingTimer())
                 .build();
@@ -116,6 +125,9 @@ public abstract class AdvancedConfig {
         if (config.hasMaxProfileSamplesPerTransaction()) {
             builder.maxProfileSamplesPerTransaction(
                     config.getMaxProfileSamplesPerTransaction().getValue());
+        }
+        if (config.hasMaxTracesStoredPerMinute()) {
+            builder.maxTracesStoredPerMinute(config.getMaxTracesStoredPerMinute().getValue());
         }
         if (config.hasMbeanGaugeNotFoundDelaySeconds()) {
             builder.mbeanGaugeNotFoundDelaySeconds(

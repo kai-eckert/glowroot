@@ -216,7 +216,8 @@ class ConfigServiceImpl implements ConfigService {
                 .setMaxQueryAggregates(of(500))
                 .setMaxServiceCallAggregates(of(500))
                 .setMaxTraceEntriesPerTransaction(of(2000))
-                .setMaxProfileSamplesPerTransaction(of(10000))
+                .setMaxProfileSamplesPerTransaction(of(50000))
+                .setMaxTracesStoredPerMinute(of(600))
                 .setMbeanGaugeNotFoundDelaySeconds(of(60))
                 .build();
     }

@@ -623,6 +623,7 @@ class ConfigJsonService {
         abstract int maxServiceCallAggregates();
         abstract int maxTraceEntriesPerTransaction();
         abstract int maxProfileSamplesPerTransaction();
+        abstract int maxTracesStoredPerMinute();
         abstract int mbeanGaugeNotFoundDelaySeconds();
         abstract boolean weavingTimer();
         abstract String version();
@@ -636,6 +637,7 @@ class ConfigJsonService {
                     .setMaxServiceCallAggregates(of(maxServiceCallAggregates()))
                     .setMaxTraceEntriesPerTransaction(of(maxTraceEntriesPerTransaction()))
                     .setMaxProfileSamplesPerTransaction(of(maxProfileSamplesPerTransaction()))
+                    .setMaxTracesStoredPerMinute(of(maxTracesStoredPerMinute()))
                     .setMbeanGaugeNotFoundDelaySeconds(of(mbeanGaugeNotFoundDelaySeconds()))
                     .setWeavingTimer(weavingTimer())
                     .build();
@@ -652,6 +654,7 @@ class ConfigJsonService {
                             config.getMaxTraceEntriesPerTransaction().getValue())
                     .maxProfileSamplesPerTransaction(
                             config.getMaxProfileSamplesPerTransaction().getValue())
+                    .maxTracesStoredPerMinute(config.getMaxTracesStoredPerMinute().getValue())
                     .mbeanGaugeNotFoundDelaySeconds(
                             config.getMbeanGaugeNotFoundDelaySeconds().getValue())
                     .weavingTimer(config.getWeavingTimer())

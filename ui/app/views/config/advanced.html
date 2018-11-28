@@ -60,6 +60,7 @@
             This is used to limit memory and storage when there are lots of distinct transaction names.
             Any transactions that do not make the cut are still aggregated and stored in the "Overall" transaction
             aggregate.
+            This limit is applied per transaction type.
           </div>
         </div>
         <div gt-form-group
@@ -140,6 +141,22 @@
             potentially hundreds of thousands of profile samples (e.g. large batch or background
             operations).
             Profile samples are merged where possible so this can generally be quite large.
+          </div>
+        </div>
+        <div gt-form-group
+             gt-label="Max traces stored per minute"
+             gt-model="config.maxTracesStoredPerMinute"
+             gt-number="true"
+             gt-pattern="pattern.integer"
+             gt-required="loaded"
+             gt-disabled="!agentRollup.permissions.config.edit.advanced"
+             gt-width="7em"
+             ng-if="!isAgentRollup()">
+          <div class="help-block">
+            Maximum number of traces stored per minute (one twelfth of this value is applied every 5 seconds, with an
+            exception for storing successively longer traces after the 5-second limit is hit).
+            This is used to limit the effect of spikes on the collector and storage.
+            This limit is applied per transaction type.
           </div>
         </div>
         <div class="form-group row"
