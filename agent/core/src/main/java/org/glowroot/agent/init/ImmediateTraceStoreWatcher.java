@@ -28,6 +28,7 @@ import org.glowroot.agent.impl.TransactionCollector;
 import org.glowroot.agent.impl.TransactionRegistry;
 import org.glowroot.agent.util.Tickers;
 import org.glowroot.common.util.ScheduledRunnable;
+import org.glowroot.common.util.ScheduledRunnableWithBackoff;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -76,18 +77,18 @@ class ImmediateTraceStoreWatcher extends ScheduledRunnable {
                 long initialDelayMillis =
                         Math.max(0, SECONDS.toMillis(immediatePartialStoreThresholdSeconds)
                                 - NANOSECONDS.toMillis(transaction.getDurationNanos()));
-                ScheduledRunnable immediateTraceStoreRunnable =
-                        new ImmediateTraceStoreRunnable(transaction, transactionCollector);
-                immediateTraceStoreRunnable.scheduleWithFixedDelay(backgroundExecutor,
-                        initialDelayMillis, SECONDS.toMillis(immediatePartialStoreThresholdSeconds),
-                        MILLISECONDS);
+                ScheduledRunnableWithBackoff immediateTraceStoreRunnable =
+                        new ImmediateTraceStoreRunnable(transaction, transactionCollector,
+                                backgroundExecutor);
+                immediateTraceStoreRunnable.scheduleWithBackoff(initialDelayMillis,
+                        SECONDS.toMillis(immediatePartialStoreThresholdSeconds), MILLISECONDS);
                 transaction.setImmediateTraceStoreRunnable(immediateTraceStoreRunnable);
             }
         }
     }
 
     @VisibleForTesting
-    static class ImmediateTraceStoreRunnable extends ScheduledRunnable {
+    static class ImmediateTraceStoreRunnable extends ScheduledRunnableWithBackoff {
 
         private final Transaction transaction;
         private final TransactionCollector transactionCollector;
@@ -95,7 +96,9 @@ class ImmediateTraceStoreWatcher extends ScheduledRunnable {
 
         @VisibleForTesting
         ImmediateTraceStoreRunnable(Transaction transaction,
-                TransactionCollector transactionCollector) {
+                TransactionCollector transactionCollector,
+                ScheduledExecutorService scheduledExecutor) {
+            super(scheduledExecutor);
             this.transaction = transaction;
             this.transactionCollector = transactionCollector;
         }
