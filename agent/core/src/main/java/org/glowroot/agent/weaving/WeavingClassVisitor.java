@@ -15,6 +15,7 @@
  */
 package org.glowroot.agent.weaving;
 
+import java.io.File;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
@@ -22,11 +23,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.google.common.base.StandardSystemProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.common.io.Files;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
@@ -367,8 +370,25 @@ class WeavingClassVisitor extends ClassVisitor {
         mv.visitEnd();
         cw.visitEnd();
         byte[] bytes = cw.toByteArray();
+        File tempFile = getTempFile(metaHolderInternalName, "", ".class");
+        Files.write(bytes, tempFile);
+        logger.info("wrote {} to {}", ClassNames.fromInternalName(metaHolderInternalName),
+                tempFile);
         ClassLoaders.defineClass(ClassNames.fromInternalName(metaHolderInternalName), bytes,
                 loader);
+    }
+
+    private static File getTempFile(String className, String prefix, String suffix) {
+        String tmpDirProperty = StandardSystemProperty.JAVA_IO_TMPDIR.value();
+        File tmpDir = tmpDirProperty == null ? new File(".") : new File(tmpDirProperty);
+        String simpleName;
+        int index = className.lastIndexOf('/');
+        if (index == -1) {
+            simpleName = className;
+        } else {
+            simpleName = className.substring(index + 1);
+        }
+        return new File(tmpDir, prefix + simpleName + suffix);
     }
 
     private static void loadType(MethodVisitor mv, Type type, Type ownerType) {
