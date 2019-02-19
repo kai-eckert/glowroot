@@ -42,7 +42,7 @@ public class RequestInvoker {
         return getRemotePortMethod != null;
     }
 
-    int getRemotePort(Object request) {
+    public int getRemotePort(Object request) {
         return Reflection.invokeWithDefault(getRemotePortMethod, request, -1);
     }
 
@@ -50,7 +50,7 @@ public class RequestInvoker {
         return getLocalAddrMethod != null;
     }
 
-    String getLocalAddr(Object request) {
+    public String getLocalAddr(Object request) {
         return Reflection.invokeWithDefault(getLocalAddrMethod, request, "");
     }
 
@@ -58,7 +58,7 @@ public class RequestInvoker {
         return getLocalNameMethod != null;
     }
 
-    String getLocalName(Object request) {
+    public String getLocalName(Object request) {
         return Reflection.invokeWithDefault(getLocalNameMethod, request, "");
     }
 
@@ -66,7 +66,7 @@ public class RequestInvoker {
         return getLocalPortMethod != null;
     }
 
-    int getLocalPort(Object request) {
+    public int getLocalPort(Object request) {
         return Reflection.invokeWithDefault(getLocalPortMethod, request, -1);
     }
 }

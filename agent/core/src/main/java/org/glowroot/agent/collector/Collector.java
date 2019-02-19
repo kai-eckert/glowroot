@@ -22,6 +22,8 @@ import java.util.List;
 
 import org.glowroot.wire.api.model.AgentConfigOuterClass.AgentConfig;
 import org.glowroot.wire.api.model.AggregateOuterClass.Aggregate;
+import org.glowroot.wire.api.model.CollectorServiceOuterClass.EumClientSpanMessage.EumClientSpan;
+import org.glowroot.wire.api.model.CollectorServiceOuterClass.EumServerSpanMessage.EumServerSpan;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.GaugeValueMessage.GaugeValue;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.InitMessage.Environment;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.LogMessage.LogEvent;
@@ -38,6 +40,10 @@ public interface Collector {
     void collectGaugeValues(List<GaugeValue> gaugeValues) throws Exception;
 
     void collectTrace(TraceReader traceReader) throws Exception;
+
+    void collectEumServerSpans(List<EumServerSpan> serverSpans) throws Exception;
+
+    void collectEumClientSpans(List<EumClientSpan> clientSpans) throws Exception;
 
     void log(LogEvent logEvent) throws Exception;
 

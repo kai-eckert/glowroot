@@ -36,6 +36,7 @@ import org.glowroot.agent.config.PluginDescriptor;
 import org.glowroot.agent.embedded.config.AdminConfigService;
 import org.glowroot.common.config.AdvancedConfig;
 import org.glowroot.common.config.AlertConfig;
+import org.glowroot.common.config.EumConfig;
 import org.glowroot.common.config.GaugeConfig;
 import org.glowroot.common.config.ImmutableAlertConfig;
 import org.glowroot.common.config.InstrumentationConfig;
@@ -107,6 +108,11 @@ public class ConfigRepositoryImpl implements ConfigRepository {
     @Override
     public AgentConfig.TransactionConfig getTransactionConfig(String agentId) {
         return configService.getTransactionConfig().toProto();
+    }
+
+    @Override
+    public AgentConfig.EumConfig getEumConfig(String agentRollupId) {
+        return configService.getEumConfig().toProto();
     }
 
     @Override
@@ -372,6 +378,17 @@ public class ConfigRepositoryImpl implements ConfigRepository {
                     Versions.getVersion(configService.getTransactionConfig().toProto());
             checkVersionsEqual(currVersion, priorVersion);
             configService.updateTransactionConfig(config);
+        }
+    }
+
+    @Override
+    public void updateEumConfig(String agentId, AgentConfig.EumConfig protoConfig,
+            String priorVersion) throws Exception {
+        EumConfig config = EumConfig.create(protoConfig);
+        synchronized (writeLock) {
+            String currVersion = Versions.getVersion(configService.getEumConfig().toProto());
+            checkVersionsEqual(currVersion, priorVersion);
+            configService.updateEumConfig(config);
         }
     }
 

@@ -15,6 +15,9 @@
  */
 package org.glowroot.agent.plugin.servlet;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.Map;
@@ -27,7 +30,10 @@ import javax.servlet.http.HttpSession;
 
 import org.glowroot.agent.plugin.api.Agent;
 import org.glowroot.agent.plugin.api.AuxThreadContext;
+import org.glowroot.agent.plugin.api.EUM;
+import org.glowroot.agent.plugin.api.Logger;
 import org.glowroot.agent.plugin.api.OptionalThreadContext;
+import org.glowroot.agent.plugin.api.OptionalThreadContext.AlreadyInTransactionBehavior;
 import org.glowroot.agent.plugin.api.ThreadContext;
 import org.glowroot.agent.plugin.api.ThreadContext.Priority;
 import org.glowroot.agent.plugin.api.TimerName;
@@ -45,9 +51,9 @@ import org.glowroot.agent.plugin.api.weaving.OnBefore;
 import org.glowroot.agent.plugin.api.weaving.OnReturn;
 import org.glowroot.agent.plugin.api.weaving.OnThrow;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
+import org.glowroot.agent.plugin.servlet.collocate.DetailCapture;
 import org.glowroot.agent.plugin.servlet.collocate.HttpSessions;
-import org.glowroot.agent.plugin.servlet.util.DetailCapture;
-import org.glowroot.agent.plugin.servlet.util.DetailCapture.RequestHostAndPortDetail;
+import org.glowroot.agent.plugin.servlet.util.RequestHostAndPortDetail;
 import org.glowroot.agent.plugin.servlet.util.RequestInvoker;
 import org.glowroot.agent.plugin.servlet.util.ResponseInvoker;
 import org.glowroot.agent.plugin.servlet.util.ServletMessageSupplier;
@@ -58,9 +64,39 @@ import org.glowroot.agent.plugin.servlet.util.Strings;
 // this plugin is careful not to rely on request or session objects being thread-safe
 public class ServletAspect {
 
+    private static final Logger logger = Logger.getLogger(ServletAspect.class);
+
+    // needs to be public so it can be seen from collocated pointcut
+    public static final byte[] EUM_JS = readEumJs();
+
     // needs to be public so it can be seen from collocated pointcut
     public static final FastThreadLocal</*@Nullable*/ String> sendError =
             new FastThreadLocal</*@Nullable*/ String>();
+
+    private static byte[] readEumJs() {
+        InputStream in = ServletAspect.class.getResourceAsStream("resources/eum.js");
+        if (in == null) {
+            return new byte[0];
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            byte[] bytes = new byte[1024];
+            int len;
+            while ((len = in.read(bytes)) != -1) {
+                out.write(bytes, 0, len);
+            }
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+            return new byte[0];
+        } finally {
+            try {
+                in.close();
+            } catch (IOException e) {
+                logger.error(e.getMessage(), e);
+            }
+        }
+        return out.toByteArray();
+    }
 
     @Pointcut(className = "javax.servlet.Servlet", methodName = "service",
             methodParameterTypes = {"javax.servlet.ServletRequest",
@@ -192,8 +228,17 @@ public class ServletAspect {
             } else {
                 transactionType = "Web";
             }
-            TraceEntry traceEntry = context.startTransaction(transactionType, requestUri,
-                    messageSupplier, timerName);
+            TraceEntry traceEntry;
+            String distributedTraceId = request.getHeader("Glowroot-Trace-Id");
+            if (distributedTraceId == null) {
+                traceEntry = context.startTransaction(transactionType, requestUri, messageSupplier,
+                        timerName);
+            } else {
+                String spanId = request.getHeader("Glowroot-Span-Id");
+                traceEntry = context.startTransaction(transactionType, requestUri,
+                        distributedTraceId, spanId, messageSupplier, timerName,
+                        AlreadyInTransactionBehavior.CAPTURE_TRACE_ENTRY);
+            }
             if (setWithCoreMaxPriority) {
                 context.setTransactionType(transactionType, Priority.CORE_MAX);
             }
@@ -208,6 +253,39 @@ public class ServletAspect {
                 context.setTransactionUser(user, Priority.CORE_PLUGIN);
             }
             return traceEntry;
+        }
+        // needs to be inside collocated pointcut
+        public static boolean handleEum(@Nullable ServletRequest req,
+                @Nullable ServletResponse res) {
+            if (!(req instanceof HttpServletRequest)) {
+                return false;
+            }
+            if (!(res instanceof HttpServletResponse)) {
+                return false;
+            }
+            HttpServletRequest request = (HttpServletRequest) req;
+            String requestURI = request.getRequestURI();
+            if (requestURI == null) {
+                return false;
+            }
+            if (requestURI.endsWith("/--glowroot-eum")) {
+                EUM.captureEumSpanFromQueryString(requestURI);
+                return true;
+            }
+            if (requestURI.endsWith("/--glowroot-eum.js")) {
+                try {
+                    HttpServletResponse response = (HttpServletResponse) res;
+                    response.setContentLength(EUM_JS.length);
+                    response.setContentType("text/javascript; charset=utf-8");
+                    // TODO set expiration
+                    response.getOutputStream().write(EUM_JS);
+                } catch (IOException e) {
+                    // can fail due to browser/network disconnect
+                    logger.debug(e.getMessage(), e);
+                }
+                return true;
+            }
+            return false;
         }
     }
 

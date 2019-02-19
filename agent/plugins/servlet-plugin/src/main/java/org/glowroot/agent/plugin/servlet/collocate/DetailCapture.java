@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glowroot.agent.plugin.servlet.util;
+package org.glowroot.agent.plugin.servlet.collocate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,6 +29,10 @@ import javax.servlet.http.HttpServletRequest;
 import org.glowroot.agent.plugin.api.checker.Nullable;
 import org.glowroot.agent.plugin.api.util.ImmutableList;
 import org.glowroot.agent.plugin.api.util.ImmutableMap;
+import org.glowroot.agent.plugin.servlet.util.RequestHostAndPortDetail;
+import org.glowroot.agent.plugin.servlet.util.RequestInvoker;
+import org.glowroot.agent.plugin.servlet.util.ServletPluginProperties;
+import org.glowroot.agent.plugin.servlet.util.Strings;
 
 // shallow copies are necessary because request may not be thread safe, which may affect ability
 // to see detail from active traces
@@ -201,23 +205,5 @@ public class DetailCapture {
                 requestHeaders.put(name, ImmutableList.copyOf(list));
             }
         }
-    }
-
-    public static class RequestHostAndPortDetail {
-        // -1 is used as error return value by RequestInvoker.getRemotePort()
-        static final int UNSET = -2;
-        @Nullable
-        String remoteAddress;
-        @Nullable
-        String remoteHostname;
-        int remotePort = UNSET;
-        @Nullable
-        String localAddress;
-        @Nullable
-        String localHostname;
-        int localPort = UNSET;
-        @Nullable
-        String serverHostname;
-        int serverPort = UNSET;
     }
 }

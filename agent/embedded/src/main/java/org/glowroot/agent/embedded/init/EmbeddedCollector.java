@@ -26,6 +26,7 @@ import org.glowroot.agent.collector.Collector;
 import org.glowroot.agent.embedded.repo.AggregateDao;
 import org.glowroot.agent.embedded.repo.ConfigRepositoryImpl;
 import org.glowroot.agent.embedded.repo.EnvironmentDao;
+import org.glowroot.agent.embedded.repo.EumSpanDao;
 import org.glowroot.agent.embedded.repo.GaugeValueDao;
 import org.glowroot.agent.embedded.repo.TraceDao;
 import org.glowroot.common2.config.HealthchecksIoConfig;
@@ -34,6 +35,8 @@ import org.glowroot.common2.repo.util.HttpClient;
 import org.glowroot.wire.api.model.AgentConfigOuterClass.AgentConfig;
 import org.glowroot.wire.api.model.AgentConfigOuterClass.AgentConfig.AlertConfig;
 import org.glowroot.wire.api.model.AgentConfigOuterClass.AgentConfig.AlertConfig.AlertCondition;
+import org.glowroot.wire.api.model.CollectorServiceOuterClass.EumClientSpanMessage.EumClientSpan;
+import org.glowroot.wire.api.model.CollectorServiceOuterClass.EumServerSpanMessage.EumServerSpan;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.GaugeValueMessage.GaugeValue;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.InitMessage.Environment;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.LogMessage.LogEvent;
@@ -47,17 +50,20 @@ class EmbeddedCollector implements Collector {
     private final EnvironmentDao environmentDao;
     private final AggregateDao aggregateDao;
     private final TraceDao traceDao;
+    private final EumSpanDao eumSpanDao;
     private final GaugeValueDao gaugeValueDao;
     private final ConfigRepositoryImpl configRepository;
     private final AlertingService alertingService;
     private final HttpClient httpClient;
 
     EmbeddedCollector(EnvironmentDao environmentDao, AggregateDao aggregateDao, TraceDao traceDao,
-            GaugeValueDao gaugeValueDao, ConfigRepositoryImpl configRepository,
-            AlertingService alertingService, HttpClient httpClient) {
+            EumSpanDao eumSpanDao, GaugeValueDao gaugeValueDao,
+            ConfigRepositoryImpl configRepository, AlertingService alertingService,
+            HttpClient httpClient) {
         this.environmentDao = environmentDao;
         this.aggregateDao = aggregateDao;
         this.traceDao = traceDao;
+        this.eumSpanDao = eumSpanDao;
         this.gaugeValueDao = gaugeValueDao;
         this.configRepository = configRepository;
         this.alertingService = alertingService;
@@ -131,6 +137,16 @@ class EmbeddedCollector implements Collector {
     @Override
     public void collectTrace(TraceReader traceReader) throws Exception {
         traceDao.store(traceReader);
+    }
+
+    @Override
+    public void collectEumServerSpans(List<EumServerSpan> serverSpans) throws Exception {
+        eumSpanDao.storeServerSpans(serverSpans);
+    }
+
+    @Override
+    public void collectEumClientSpans(List<EumClientSpan> clientSpans) throws Exception {
+        eumSpanDao.storeClientSpans(clientSpans);
     }
 
     @Override

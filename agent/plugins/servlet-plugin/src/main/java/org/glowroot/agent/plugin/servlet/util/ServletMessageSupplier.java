@@ -33,7 +33,7 @@ import org.glowroot.agent.plugin.api.checker.MonotonicNonNull;
 import org.glowroot.agent.plugin.api.checker.Nullable;
 import org.glowroot.agent.plugin.api.checker.RequiresNonNull;
 import org.glowroot.agent.plugin.api.util.Optional;
-import org.glowroot.agent.plugin.servlet.util.DetailCapture.RequestHostAndPortDetail;
+import org.glowroot.agent.plugin.servlet.collocate.DetailCapture;
 
 // this class is thread-safe (unlike other MessageSuppliers) since it gets passed around to
 // auxiliary thread contexts for handling async servlets

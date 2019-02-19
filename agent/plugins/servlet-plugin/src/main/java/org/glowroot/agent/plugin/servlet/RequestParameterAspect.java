@@ -25,7 +25,7 @@ import org.glowroot.agent.plugin.api.weaving.BindClassMeta;
 import org.glowroot.agent.plugin.api.weaving.BindReceiver;
 import org.glowroot.agent.plugin.api.weaving.OnReturn;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
-import org.glowroot.agent.plugin.servlet.util.DetailCapture;
+import org.glowroot.agent.plugin.servlet.collocate.DetailCapture;
 import org.glowroot.agent.plugin.servlet.util.RequestClassMeta;
 import org.glowroot.agent.plugin.servlet.util.ServletMessageSupplier;
 

@@ -82,6 +82,7 @@ public class TransactionService implements ConfigListener {
     }
 
     TraceEntryImpl startTransaction(String transactionType, String transactionName,
+            @Nullable String distributedTraceId, @Nullable String spanId,
             MessageSupplier messageSupplier, TimerName timerName,
             ThreadContextThreadLocal.Holder threadContextHolder, int rootNestingGroupId,
             int rootSuppressionKeyId) {
@@ -89,10 +90,11 @@ public class TransactionService implements ConfigListener {
         configService.readMemoryBarrier();
         long startTick = ticker.read();
         Transaction transaction = new Transaction(clock.currentTimeMillis(), startTick,
-                transactionType, transactionName, messageSupplier, timerName, captureThreadStats,
-                maxTraceEntries, maxQueryAggregates, maxServiceCallAggregates, maxProfileSamples,
-                threadAllocatedBytes, transactionCompletionCallback, ticker, transactionRegistry,
-                this, configService, threadContextHolder, rootNestingGroupId, rootSuppressionKeyId);
+                transactionType, transactionName, distributedTraceId, spanId, messageSupplier,
+                timerName, captureThreadStats, maxTraceEntries, maxQueryAggregates,
+                maxServiceCallAggregates, maxProfileSamples, threadAllocatedBytes,
+                transactionCompletionCallback, ticker, transactionRegistry, this, configService,
+                threadContextHolder, rootNestingGroupId, rootSuppressionKeyId);
         SelfRemovableEntry transactionEntry = transactionRegistry.addTransaction(transaction);
         transaction.setTransactionEntry(transactionEntry);
         threadContextHolder.set(transaction.getMainThreadContext());

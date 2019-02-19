@@ -54,6 +54,10 @@ import org.glowroot.wire.api.model.CollectorServiceOuterClass.AggregateStreamMes
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.AggregateStreamMessage.OverallAggregate;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.AggregateStreamMessage.TransactionAggregate;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.EmptyMessage;
+import org.glowroot.wire.api.model.CollectorServiceOuterClass.EumClientSpanMessage;
+import org.glowroot.wire.api.model.CollectorServiceOuterClass.EumClientSpanMessage.EumClientSpan;
+import org.glowroot.wire.api.model.CollectorServiceOuterClass.EumServerSpanMessage;
+import org.glowroot.wire.api.model.CollectorServiceOuterClass.EumServerSpanMessage.EumServerSpan;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.GaugeValueMessage;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.GaugeValueMessage.GaugeValue;
 import org.glowroot.wire.api.model.CollectorServiceOuterClass.GaugeValueResponseMessage;
@@ -247,6 +251,34 @@ public class CentralCollector implements Collector {
         } else {
             centralConnection.blockingCallWithAFewRetries(new CollectTraceGrpcCall(traceReader));
         }
+    }
+
+    @Override
+    public void collectEumServerSpans(List<EumServerSpan> serverSpans) throws InterruptedException {
+        final EumServerSpanMessage message = EumServerSpanMessage.newBuilder()
+                .setAgentId(agentId)
+                .addAllServerSpan(serverSpans)
+                .build();
+        centralConnection.blockingCallWithAFewRetries(new GrpcCall<EmptyMessage>() {
+            @Override
+            public void call(StreamObserver<EmptyMessage> responseObserver) {
+                collectorServiceStub.collectEumServerSpans(message, responseObserver);
+            }
+        });
+    }
+
+    @Override
+    public void collectEumClientSpans(List<EumClientSpan> clientSpans) throws InterruptedException {
+        final EumClientSpanMessage message = EumClientSpanMessage.newBuilder()
+                .setAgentId(agentId)
+                .addAllClientSpan(clientSpans)
+                .build();
+        centralConnection.blockingCallWithAFewRetries(new GrpcCall<EmptyMessage>() {
+            @Override
+            public void call(StreamObserver<EmptyMessage> responseObserver) {
+                collectorServiceStub.collectEumClientSpans(message, responseObserver);
+            }
+        });
     }
 
     @Override

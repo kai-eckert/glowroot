@@ -105,6 +105,9 @@ public class Transaction {
 
     private static final Random random = new Random();
 
+    private final @Nullable String distributedTraceId;
+    private final @Nullable String spanId;
+
     private volatile @Nullable String traceId;
 
     private final long startTime;
@@ -209,6 +212,7 @@ public class Transaction {
     private boolean stopMergingAuxThreadContexts;
 
     Transaction(long startTime, long startTick, String transactionType, String transactionName,
+            @Nullable String distributedTraceId, @Nullable String spanId,
             MessageSupplier messageSupplier, TimerName timerName, boolean captureThreadStats,
             int maxTraceEntries, int maxQueryAggregates, int maxServiceCallAggregates,
             int maxProfileSamples, @Nullable ThreadAllocatedBytes threadAllocatedBytes,
@@ -221,6 +225,8 @@ public class Transaction {
         this.startTick = startTick;
         this.transactionType = transactionType;
         this.transactionName = transactionName;
+        this.distributedTraceId = distributedTraceId;
+        this.spanId = spanId;
         this.maxTraceEntries = maxTraceEntries;
         this.maxQueryAggregates = maxQueryAggregates;
         this.maxServiceCallAggregates = maxServiceCallAggregates;
@@ -253,6 +259,10 @@ public class Transaction {
             }
         }
         return traceId;
+    }
+
+    public @Nullable String getSpanId() {
+        return spanId;
     }
 
     public long getStartTick() {
@@ -761,12 +771,13 @@ public class Transaction {
     }
 
     TraceEntryImpl startInnerTransaction(String transactionType, String transactionName,
+            @Nullable String distributedTraceId, @Nullable String spanId,
             MessageSupplier messageSupplier, TimerName timerName,
             ThreadContextThreadLocal.Holder threadContextHolder, int rootNestingGroupId,
             int rootSuppressionKeyId) {
         return transactionService.startTransaction(transactionType, transactionName,
-                messageSupplier, timerName, threadContextHolder, rootNestingGroupId,
-                rootSuppressionKeyId);
+                distributedTraceId, spanId, messageSupplier, timerName, threadContextHolder,
+                rootNestingGroupId, rootSuppressionKeyId);
     }
 
     boolean isEntryLimitExceeded(int entryCount) {
@@ -1056,6 +1067,13 @@ public class Transaction {
         random.nextBytes(bytes);
         // lower 6 bytes of current time will wrap only every 8925 years
         return lowerSixBytesHex(startTime) + BaseEncoding.base16().lowerCase().encode(bytes);
+    }
+
+    @VisibleForTesting
+    static String buildSpanId() {
+        byte[] bytes = new byte[8];
+        random.nextBytes(bytes);
+        return BaseEncoding.base16().lowerCase().encode(bytes);
     }
 
     @VisibleForTesting

@@ -27,7 +27,7 @@ import org.glowroot.agent.plugin.api.weaving.BindReceiver;
 import org.glowroot.agent.plugin.api.weaving.IsEnabled;
 import org.glowroot.agent.plugin.api.weaving.OnAfter;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
-import org.glowroot.agent.plugin.servlet.util.DetailCapture;
+import org.glowroot.agent.plugin.servlet.collocate.DetailCapture;
 import org.glowroot.agent.plugin.servlet.util.ResponseInvoker;
 import org.glowroot.agent.plugin.servlet.util.ServletMessageSupplier;
 import org.glowroot.agent.plugin.servlet.util.ServletPluginProperties;

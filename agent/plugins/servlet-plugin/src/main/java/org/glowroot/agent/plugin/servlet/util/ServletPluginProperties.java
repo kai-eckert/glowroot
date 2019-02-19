@@ -29,6 +29,7 @@ import org.glowroot.agent.plugin.api.config.ConfigListener;
 import org.glowroot.agent.plugin.api.config.ConfigService;
 import org.glowroot.agent.plugin.api.util.ImmutableList;
 import org.glowroot.agent.plugin.api.util.ImmutableSet;
+import org.glowroot.agent.plugin.servlet.collocate.DetailCapture;
 
 public class ServletPluginProperties {
 
@@ -71,51 +72,51 @@ public class ServletPluginProperties {
 
     private ServletPluginProperties() {}
 
-    static List<Pattern> captureRequestParameters() {
+    public static List<Pattern> captureRequestParameters() {
         return captureRequestParameters;
     }
 
-    static List<Pattern> maskRequestParameters() {
+    public static List<Pattern> maskRequestParameters() {
         return maskRequestParameters;
     }
 
-    static List<Pattern> captureRequestHeaders() {
+    public static List<Pattern> captureRequestHeaders() {
         return captureRequestHeaders;
     }
 
-    static boolean captureSomeRequestHostAndPortDetail() {
+    public static boolean captureSomeRequestHostAndPortDetail() {
         return someRequestHostAndPortDetail;
     }
 
-    static boolean captureRequestRemoteAddress() {
+    public static boolean captureRequestRemoteAddress() {
         return captureRequestRemoteAddress;
     }
 
-    static boolean captureRequestRemoteHostname() {
+    public static boolean captureRequestRemoteHostname() {
         return captureRequestRemoteHostname;
     }
 
-    static boolean captureRequestRemotePort() {
+    public static boolean captureRequestRemotePort() {
         return captureRequestRemotePort;
     }
 
-    static boolean captureRequestLocalAddress() {
+    public static boolean captureRequestLocalAddress() {
         return captureRequestLocalAddress;
     }
 
-    static boolean captureRequestLocalHostname() {
+    public static boolean captureRequestLocalHostname() {
         return captureRequestLocalHostname;
     }
 
-    static boolean captureRequestLocalPort() {
+    public static boolean captureRequestLocalPort() {
         return captureRequestLocalPort;
     }
 
-    static boolean captureRequestServerHostname() {
+    public static boolean captureRequestServerHostname() {
         return captureRequestServerHostname;
     }
 
-    static boolean captureRequestServerPort() {
+    public static boolean captureRequestServerPort() {
         return captureRequestServerPort;
     }
 

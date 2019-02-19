@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,12 +74,21 @@ class OptionalThreadContextImpl implements ThreadContextPlus {
     @Override
     public TraceEntry startTransaction(String transactionType, String transactionName,
             MessageSupplier messageSupplier, TimerName timerName) {
-        return startTransaction(transactionType, transactionName, messageSupplier, timerName,
-                AlreadyInTransactionBehavior.CAPTURE_TRACE_ENTRY);
+        return startTransaction(transactionType, transactionName, null, null, messageSupplier,
+                timerName, AlreadyInTransactionBehavior.CAPTURE_TRACE_ENTRY);
     }
 
     @Override
     public TraceEntry startTransaction(String transactionType, String transactionName,
+            MessageSupplier messageSupplier, TimerName timerName,
+            AlreadyInTransactionBehavior alreadyInTransactionBehavior) {
+        return startTransaction(transactionType, transactionName, null, null, messageSupplier,
+                timerName, alreadyInTransactionBehavior);
+    }
+
+    @Override
+    public TraceEntry startTransaction(String transactionType, String transactionName,
+            @Nullable String distributedTraceId, @Nullable String spanId,
             MessageSupplier messageSupplier, TimerName timerName,
             AlreadyInTransactionBehavior alreadyInTransactionBehavior) {
         if (transactionType == null) {
@@ -100,8 +109,8 @@ class OptionalThreadContextImpl implements ThreadContextPlus {
         }
         if (threadContext == null) {
             TraceEntry traceEntry = transactionService.startTransaction(transactionType,
-                    transactionName, messageSupplier, timerName, threadContextHolder,
-                    rootNestingGroupId, rootSuppressionKeyId);
+                    transactionName, distributedTraceId, spanId, messageSupplier, timerName,
+                    threadContextHolder, rootNestingGroupId, rootSuppressionKeyId);
             threadContext = checkNotNull(threadContextHolder.get());
             return traceEntry;
         } else {
