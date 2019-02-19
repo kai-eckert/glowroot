@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,8 @@ import org.glowroot.agent.plugin.api.weaving.Pointcut;
 public class AxisClientAspect {
 
     @Pointcut(className = "org.apache.axis.client.Call", methodName = "invoke",
-            methodParameterTypes = {}, nestingGroup = "http-client", timerName = "axis service")
+            methodParameterTypes = {}, nestingGroup = "http-client", timerName = "axis service",
+            collocate = true)
     public static class ResourceAdvice {
 
         private static final TimerName timerName = Agent.getTimerName(ResourceAdvice.class);

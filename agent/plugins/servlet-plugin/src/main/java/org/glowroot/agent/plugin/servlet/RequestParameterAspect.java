@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 the original author or authors.
+ * Copyright 2011-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,20 +17,25 @@ package org.glowroot.agent.plugin.servlet;
 
 import java.util.Map;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.glowroot.agent.plugin.api.Logger;
 import org.glowroot.agent.plugin.api.ThreadContext;
 import org.glowroot.agent.plugin.api.weaving.BindClassMeta;
 import org.glowroot.agent.plugin.api.weaving.BindReceiver;
 import org.glowroot.agent.plugin.api.weaving.OnReturn;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
-import org.glowroot.agent.plugin.servlet.ServletAspect.HttpServletRequest;
+import org.glowroot.agent.plugin.servlet.util.DetailCapture;
+import org.glowroot.agent.plugin.servlet.util.RequestClassMeta;
+import org.glowroot.agent.plugin.servlet.util.ServletMessageSupplier;
 
 public class RequestParameterAspect {
 
-    private static final Logger logger = Logger.getLogger(RequestParameterAspect.class);
+    // needs to be public so it can be seen from collocated pointcut
+    public static final Logger logger = Logger.getLogger(RequestParameterAspect.class);
 
     @Pointcut(className = "javax.servlet.ServletRequest", methodName = "getParameter*",
-            methodParameterTypes = {".."}, nestingGroup = "servlet-inner-call")
+            methodParameterTypes = {".."}, nestingGroup = "servlet-inner-call", collocate = true)
     public static class GetParameterAdvice {
         @OnReturn
         public static void onReturn(ThreadContext context, @BindReceiver Object req,
@@ -58,7 +63,7 @@ public class RequestParameterAspect {
                         DetailCapture.captureRequestParameters(request));
                 return;
             }
-            Map</*@Nullable*/ String, /*@Nullable*/ Object> parameterMap;
+            Map</*@Nullable*/ String, ?> parameterMap;
             try {
                 parameterMap = request.getParameterMap();
             } catch (Exception e) {

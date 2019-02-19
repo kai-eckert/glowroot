@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,31 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glowroot.agent.plugin.httpclient;
+package org.glowroot.agent.plugin.kafka.collocate;
 
-import java.io.IOException;
-
-import com.squareup.okhttp.Callback;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.RecordMetadata;
 
 import org.glowroot.agent.plugin.api.AsyncTraceEntry;
+import org.glowroot.agent.plugin.api.checker.Nullable;
 
-public class OkHttp2xCallbackWrapperForNullDelegate implements Callback {
+public class CallbackWrapperForNullDelegate implements Callback {
 
     private final AsyncTraceEntry asyncTraceEntry;
 
-    public OkHttp2xCallbackWrapperForNullDelegate(AsyncTraceEntry asyncTraceEntry) {
+    public CallbackWrapperForNullDelegate(AsyncTraceEntry asyncTraceEntry) {
         this.asyncTraceEntry = asyncTraceEntry;
     }
 
     @Override
-    public void onFailure(Request request, IOException exception) {
-        asyncTraceEntry.endWithError(exception);
-    }
-
-    @Override
-    public void onResponse(Response response) throws IOException {
-        asyncTraceEntry.end();
+    public void onCompletion(@Nullable RecordMetadata metadata, @Nullable Exception exception) {
+        if (exception == null) {
+            asyncTraceEntry.end();
+        } else {
+            asyncTraceEntry.endWithError(exception);
+        }
     }
 }

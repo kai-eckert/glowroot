@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glowroot.agent.plugin.httpclient;
+package org.glowroot.agent.plugin.httpclient.collocate;
 
-import org.apache.http.concurrent.FutureCallback;
+import java.io.IOException;
+
+import com.squareup.okhttp.Callback;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
 
 import org.glowroot.agent.plugin.api.AsyncTraceEntry;
 import org.glowroot.agent.plugin.api.AuxThreadContext;
 import org.glowroot.agent.plugin.api.TraceEntry;
 
-public class FutureCallbackWrapper<T> implements FutureCallback<T> {
+public class OkHttp2xCallbackWrapper implements Callback {
 
-    private final FutureCallback<T> delegate;
+    private final Callback delegate;
     private final AsyncTraceEntry asyncTraceEntry;
     private final AuxThreadContext auxContext;
 
-    public FutureCallbackWrapper(FutureCallback<T> delegate, AsyncTraceEntry asyncTraceEntry,
+    public OkHttp2xCallbackWrapper(Callback delegate, AsyncTraceEntry asyncTraceEntry,
             AuxThreadContext auxContext) {
         this.delegate = delegate;
         this.asyncTraceEntry = asyncTraceEntry;
@@ -35,24 +39,11 @@ public class FutureCallbackWrapper<T> implements FutureCallback<T> {
     }
 
     @Override
-    public void completed(T result) {
-        asyncTraceEntry.end();
-        TraceEntry traceEntry = auxContext.start();
-        try {
-            delegate.completed(result);
-        } catch (Throwable t) {
-            traceEntry.endWithError(t);
-            throw rethrow(t);
-        }
-        traceEntry.end();
-    }
-
-    @Override
-    public void failed(Exception exception) {
+    public void onFailure(Request request, IOException exception) {
         asyncTraceEntry.endWithError(exception);
         TraceEntry traceEntry = auxContext.start();
         try {
-            delegate.failed(exception);
+            delegate.onFailure(request, exception);
         } catch (Throwable t) {
             traceEntry.endWithError(t);
             throw rethrow(t);
@@ -61,11 +52,11 @@ public class FutureCallbackWrapper<T> implements FutureCallback<T> {
     }
 
     @Override
-    public void cancelled() {
+    public void onResponse(Response response) throws IOException {
         asyncTraceEntry.end();
         TraceEntry traceEntry = auxContext.start();
         try {
-            delegate.cancelled();
+            delegate.onResponse(response);
         } catch (Throwable t) {
             traceEntry.endWithError(t);
             throw rethrow(t);
@@ -74,7 +65,7 @@ public class FutureCallbackWrapper<T> implements FutureCallback<T> {
     }
 
     private static RuntimeException rethrow(Throwable t) {
-        FutureCallbackWrapper.<RuntimeException>throwsUnchecked(t);
+        OkHttp2xCallbackWrapper.<RuntimeException>throwsUnchecked(t);
         throw new AssertionError();
     }
 

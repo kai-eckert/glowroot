@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,13 +38,17 @@ import org.glowroot.agent.plugin.api.weaving.OnBefore;
 import org.glowroot.agent.plugin.api.weaving.OnReturn;
 import org.glowroot.agent.plugin.api.weaving.OnThrow;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
+import org.glowroot.agent.plugin.httpclient.collocate.FutureCallbackWithoutEntryWrapper;
+import org.glowroot.agent.plugin.httpclient.collocate.FutureCallbackWrapper;
+import org.glowroot.agent.plugin.httpclient.collocate.FutureCallbackWrapperForNullDelegate;
+import org.glowroot.agent.plugin.httpclient.util.Uris;
 
 public class ApacheHttpAsyncClientAspect {
 
     @Pointcut(className = "org.apache.http.nio.client.HttpAsyncClient", methodName = "execute",
             methodParameterTypes = {"org.apache.http.client.methods.HttpUriRequest",
                     "org.apache.http.concurrent.FutureCallback"},
-            nestingGroup = "http-client", timerName = "http client request")
+            nestingGroup = "http-client", timerName = "http client request", collocate = true)
     public static class ExecuteAdvice {
         private static final TimerName timerName = Agent.getTimerName(ExecuteAdvice.class);
         @OnBefore
@@ -104,7 +108,7 @@ public class ApacheHttpAsyncClientAspect {
             methodParameterTypes = {"org.apache.http.client.methods.HttpUriRequest",
                     "org.apache.http.protocol.HttpContext",
                     "org.apache.http.concurrent.FutureCallback"},
-            nestingGroup = "http-client", timerName = "http client request")
+            nestingGroup = "http-client", timerName = "http client request", collocate = true)
     public static class ExecuteAdvice2 {
         @OnBefore
         public static @Nullable AsyncTraceEntry onBefore(ThreadContext context,
@@ -127,7 +131,7 @@ public class ApacheHttpAsyncClientAspect {
     @Pointcut(className = "org.apache.http.nio.client.HttpAsyncClient", methodName = "execute",
             methodParameterTypes = {"org.apache.http.HttpHost", "org.apache.http.HttpRequest",
                     "org.apache.http.concurrent.FutureCallback"},
-            nestingGroup = "http-client", timerName = "http client request")
+            nestingGroup = "http-client", timerName = "http client request", collocate = true)
     public static class ExecuteWithHostAdvice {
         private static final TimerName timerName = Agent.getTimerName(ExecuteWithHostAdvice.class);
         @OnBefore
@@ -180,7 +184,7 @@ public class ApacheHttpAsyncClientAspect {
             methodParameterTypes = {"org.apache.http.HttpHost", "org.apache.http.HttpRequest",
                     "org.apache.http.protocol.HttpContext",
                     "org.apache.http.concurrent.FutureCallback"},
-            nestingGroup = "http-client", timerName = "http client request")
+            nestingGroup = "http-client", timerName = "http client request", collocate = true)
     public static class ExecuteWithHostAdvice2 {
         @OnBefore
         public static @Nullable AsyncTraceEntry onBefore(ThreadContext context,
@@ -205,7 +209,7 @@ public class ApacheHttpAsyncClientAspect {
             methodParameterTypes = {"org.apache.http.nio.protocol.HttpAsyncRequestProducer",
                     "org.apache.http.nio.protocol.HttpAsyncResponseConsumer",
                     "org.apache.http.concurrent.FutureCallback"},
-            nestingGroup = "http-client")
+            nestingGroup = "http-client", collocate = true)
     public static class ExecuteWithProducerConsumerAdvice {
         @OnBefore
         public static void onBefore(ThreadContext context,
@@ -225,7 +229,7 @@ public class ApacheHttpAsyncClientAspect {
                     "org.apache.http.nio.protocol.HttpAsyncResponseConsumer",
                     "org.apache.http.protocol.HttpContext",
                     "org.apache.http.concurrent.FutureCallback"},
-            nestingGroup = "http-client")
+            nestingGroup = "http-client", collocate = true)
     public static class ExecuteWithProducerConsumerAdvice2 {
         @OnBefore
         public static void onBefore(ThreadContext context, @BindParameter @Nullable Object producer,

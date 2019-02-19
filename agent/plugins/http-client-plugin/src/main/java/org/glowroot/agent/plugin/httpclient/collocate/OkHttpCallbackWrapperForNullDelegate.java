@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,32 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glowroot.agent.plugin.httpclient;
+package org.glowroot.agent.plugin.httpclient.collocate;
 
-import org.apache.http.concurrent.FutureCallback;
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Response;
 
 import org.glowroot.agent.plugin.api.AsyncTraceEntry;
 
-public class FutureCallbackWrapperForNullDelegate<T> implements FutureCallback<T> {
+public class OkHttpCallbackWrapperForNullDelegate implements Callback {
 
     private final AsyncTraceEntry asyncTraceEntry;
 
-    public FutureCallbackWrapperForNullDelegate(AsyncTraceEntry asyncTraceEntry) {
+    public OkHttpCallbackWrapperForNullDelegate(AsyncTraceEntry asyncTraceEntry) {
         this.asyncTraceEntry = asyncTraceEntry;
     }
 
     @Override
-    public void completed(T result) {
-        asyncTraceEntry.end();
-    }
-
-    @Override
-    public void failed(Exception exception) {
+    public void onFailure(Call call, IOException exception) {
         asyncTraceEntry.endWithError(exception);
     }
 
     @Override
-    public void cancelled() {
+    public void onResponse(Call call, Response response) throws IOException {
         asyncTraceEntry.end();
     }
 }

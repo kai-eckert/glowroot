@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import org.glowroot.agent.plugin.api.weaving.OnBefore;
 import org.glowroot.agent.plugin.api.weaving.OnReturn;
 import org.glowroot.agent.plugin.api.weaving.OnThrow;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
+import org.glowroot.agent.plugin.httpclient.util.Uris;
 
 public class ApacheHttpClient3xAspect {
 
@@ -40,7 +41,7 @@ public class ApacheHttpClient3xAspect {
             methodParameterTypes = {"org.apache.commons.httpclient.HostConfiguration",
                     "org.apache.commons.httpclient.HttpMethod",
                     "org.apache.commons.httpclient.HttpState"},
-            nestingGroup = "http-client", timerName = "http client request")
+            nestingGroup = "http-client", timerName = "http client request", collocate = true)
     public static class ExecuteMethodAdvice {
         private static final TimerName timerName = Agent.getTimerName(ExecuteMethodAdvice.class);
         @OnBefore

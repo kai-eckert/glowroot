@@ -15,7 +15,7 @@
  */
 package org.glowroot.agent.plugin.httpclient;
 
-import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 
 import org.asynchttpclient.ListenableFuture;
 import org.asynchttpclient.Request;
@@ -39,6 +39,8 @@ import org.glowroot.agent.plugin.api.weaving.OnBefore;
 import org.glowroot.agent.plugin.api.weaving.OnReturn;
 import org.glowroot.agent.plugin.api.weaving.OnThrow;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
+import org.glowroot.agent.plugin.httpclient.util.DirectExecutor;
+import org.glowroot.agent.plugin.httpclient.util.Uris;
 
 public class AsyncHttpClientAspect2x {
 
@@ -91,7 +93,7 @@ public class AsyncHttpClientAspect2x {
     @Pointcut(className = "org.asynchttpclient.AsyncHttpClient", methodName = "executeRequest",
             methodParameterTypes = {"org.asynchttpclient.Request", ".."},
             methodReturnType = "org.asynchttpclient.ListenableFuture",
-            nestingGroup = "http-client", timerName = "http client request")
+            nestingGroup = "http-client", timerName = "http client request", collocate = true)
     public static class ExecuteRequestAdvice {
         private static final TimerName timerName = Agent.getTimerName(ExecuteRequestAdvice.class);
         @OnBefore
@@ -117,8 +119,8 @@ public class AsyncHttpClientAspect2x {
         }
         @OnReturn
         public static <T extends ListenableFutureMixin & ListenableFuture<?>> void onReturn(
-                final @BindReturn @Nullable T future,
-                final @BindTraveler @Nullable AsyncTraceEntry asyncTraceEntry) {
+                @BindReturn @Nullable T future,
+                @BindTraveler @Nullable AsyncTraceEntry asyncTraceEntry) {
             if (asyncTraceEntry == null) {
                 return;
             }
@@ -128,20 +130,8 @@ public class AsyncHttpClientAspect2x {
                 return;
             }
             future.glowroot$setAsyncTraceEntry(asyncTraceEntry);
-            future.addListener(new Runnable() {
-                // suppress warnings is needed because checker framework doesn't see that
-                // asyncTraceEntry must be non-null here
-                @Override
-                @SuppressWarnings("dereference.of.nullable")
-                public void run() {
-                    Throwable t = getException(future);
-                    if (t == null) {
-                        asyncTraceEntry.end();
-                    } else {
-                        asyncTraceEntry.endWithError(t);
-                    }
-                }
-            }, DirectExecutor.INSTANCE);
+            future.addListener(new ExecuteRequestListener<T>(asyncTraceEntry, future),
+                    DirectExecutor.INSTANCE);
         }
         @OnThrow
         public static void onThrow(@BindThrowable Throwable t,
@@ -150,20 +140,6 @@ public class AsyncHttpClientAspect2x {
                 asyncTraceEntry.stopSyncTimer();
                 asyncTraceEntry.endWithError(t);
             }
-        }
-        // this is hacky way to find out if future ended with exception or not
-        @Nullable
-        private static <T extends ListenableFutureMixin & ListenableFuture<?>> Throwable getException(
-                T future) {
-            future.glowroot$setIgnoreGet(true);
-            try {
-                future.get();
-            } catch (Throwable t) {
-                return t;
-            } finally {
-                future.glowroot$setIgnoreGet(false);
-            }
-            return null;
         }
     }
 
@@ -192,13 +168,40 @@ public class AsyncHttpClientAspect2x {
         }
     }
 
-    private static class DirectExecutor implements Executor {
+    // needs to be public so it can be seen from collocated pointcut
+    public static class ExecuteRequestListener<T extends ListenableFutureMixin & Future<?>>
+            implements Runnable {
 
-        private static final DirectExecutor INSTANCE = new DirectExecutor();
+        private final AsyncTraceEntry asyncTraceEntry;
+        private final T future;
+
+        // needs to be public so it can be seen from collocated pointcut
+        public ExecuteRequestListener(AsyncTraceEntry asyncTraceEntry, T future) {
+            this.asyncTraceEntry = asyncTraceEntry;
+            this.future = future;
+        }
 
         @Override
-        public void execute(Runnable command) {
-            command.run();
+        public void run() {
+            Throwable t = getException();
+            if (t == null) {
+                asyncTraceEntry.end();
+            } else {
+                asyncTraceEntry.endWithError(t);
+            }
+        }
+
+        // this is hacky way to find out if future ended with exception or not
+        private @Nullable Throwable getException() {
+            future.glowroot$setIgnoreGet(true);
+            try {
+                future.get();
+            } catch (Throwable t) {
+                return t;
+            } finally {
+                future.glowroot$setIgnoreGet(false);
+            }
+            return null;
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,9 @@ import java.lang.annotation.Annotation;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.annotation.Nullable;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -35,8 +33,6 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.glowroot.agent.config.PluginDescriptor;
 import org.glowroot.agent.plugin.api.weaving.MethodModifier;
@@ -52,17 +48,10 @@ import static org.objectweb.asm.Opcodes.ASM7;
 
 class PluginDetailBuilder {
 
-    private static final Logger logger = LoggerFactory.getLogger(PluginDetailBuilder.class);
-
-    private static final Set<String> collocateInClassLoaderPluginIds =
-            ImmutableSet.of("http-client", "kafka");
-
     private PluginDescriptor pluginDescriptor;
-    private boolean collocateInClassLoader;
 
     PluginDetailBuilder(PluginDescriptor pluginDescriptor) {
         this.pluginDescriptor = pluginDescriptor;
-        collocateInClassLoader = collocateInClassLoaderPluginIds.contains(pluginDescriptor.id());
     }
 
     PluginDetail build() throws IOException {
@@ -77,8 +66,8 @@ class PluginDetailBuilder {
                 MemberClassVisitor mcv = new MemberClassVisitor();
                 new ClassReader(bytes).accept(mcv, ClassReader.SKIP_CODE);
                 if (mcv.pointcutAnnotationVisitor != null) {
-                    builder.addPointcutClasses(mcv.buildPointcutClass(bytes, collocateInClassLoader,
-                            pluginDescriptor.pluginJar()));
+                    builder.addPointcutClasses(
+                            mcv.buildPointcutClass(bytes, pluginDescriptor.pluginJar()));
                 } else if (mcv.mixinAnnotationVisitor != null) {
                     builder.addMixinClasses(mcv.buildMixinClass(bytes));
                 } else if (mcv.shim) {
@@ -94,7 +83,7 @@ class PluginDetailBuilder {
     static PointcutClass buildAdviceClass(byte[] bytes) {
         MemberClassVisitor acv = new MemberClassVisitor();
         new ClassReader(bytes).accept(acv, ClassReader.SKIP_CODE);
-        return acv.buildPointcutClass(bytes, false, null);
+        return acv.buildPointcutClass(bytes, null);
     }
 
     static byte[] getBytes(String className, @Nullable File pluginJar) throws IOException {
@@ -133,7 +122,7 @@ class PluginDetailBuilder {
         byte[] bytes = Resources.asByteSource(url).read();
         MemberClassVisitor mcv = new MemberClassVisitor();
         new ClassReader(bytes).accept(mcv, ClassReader.SKIP_CODE);
-        ImmutablePointcutClass pointcutClass = mcv.buildPointcutClass(bytes, false, null);
+        ImmutablePointcutClass pointcutClass = mcv.buildPointcutClass(bytes, null);
         String superName = checkNotNull(mcv.superName);
         if (!"java/lang/Object".equals(superName)) {
             pointcutClass = ImmutablePointcutClass.builder()
@@ -213,8 +202,7 @@ class PluginDetailBuilder {
             return null;
         }
 
-        private ImmutablePointcutClass buildPointcutClass(byte[] bytes,
-                boolean collocateInClassLoader, @Nullable File pluginJar) {
+        private ImmutablePointcutClass buildPointcutClass(byte[] bytes, @Nullable File pluginJar) {
             ImmutablePointcutClass.Builder builder = ImmutablePointcutClass.builder()
                     .type(Type.getObjectType(checkNotNull(name)));
             for (PointcutMethodVisitor methodVisitor : pointcutMethodVisitors) {
@@ -222,7 +210,6 @@ class PluginDetailBuilder {
             }
             return builder.pointcut(checkNotNull(pointcutAnnotationVisitor).build())
                     .bytes(bytes)
-                    .collocateInClassLoader(collocateInClassLoader)
                     .pluginJar(pluginJar)
                     .build();
         }
@@ -241,11 +228,6 @@ class PluginDetailBuilder {
                     .type(Type.getObjectType(checkNotNull(name)));
             if (interfaces != null) {
                 for (String iface : interfaces) {
-                    if (!iface.endsWith(PluginClassRenamer.MIXIN_SUFFIX)) {
-                        // see PluginClassRenamer.hack() for reason why consistent Mixin suffix is
-                        // important
-                        logger.warn("mixin interface name should end with \"Mixin\": {}", iface);
-                    }
                     builder.addInterfaces(Type.getObjectType(iface));
                 }
             }
@@ -272,6 +254,7 @@ class PluginDetailBuilder {
         private int order;
         private String suppressibleUsingKey = "";
         private String suppressionKey = "";
+        private boolean collocate = false;
 
         private PointcutAnnotationVisitor() {
             super(ASM7);
@@ -303,6 +286,8 @@ class PluginDetailBuilder {
                 suppressibleUsingKey = (String) value;
             } else if ("suppressionKey".equals(name)) {
                 suppressionKey = (String) value;
+            } else if ("collocate".equals(name)) {
+                collocate = (Boolean) value;
             } else {
                 throw new IllegalStateException("Unexpected @Pointcut attribute name: " + name);
             }
@@ -380,6 +365,10 @@ class PluginDetailBuilder {
                 @Override
                 public String suppressionKey() {
                     return suppressionKey;
+                }
+                @Override
+                public boolean collocate() {
+                    return collocate;
                 }
             };
         }

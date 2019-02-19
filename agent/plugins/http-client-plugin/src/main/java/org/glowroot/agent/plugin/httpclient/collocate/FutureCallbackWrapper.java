@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,23 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glowroot.agent.plugin.kafka;
+package org.glowroot.agent.plugin.httpclient.collocate;
 
-import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.http.concurrent.FutureCallback;
 
 import org.glowroot.agent.plugin.api.AsyncTraceEntry;
 import org.glowroot.agent.plugin.api.AuxThreadContext;
 import org.glowroot.agent.plugin.api.TraceEntry;
-import org.glowroot.agent.plugin.api.checker.Nullable;
 
-public class CallbackWrapper implements Callback {
+public class FutureCallbackWrapper<T> implements FutureCallback<T> {
 
-    private final Callback delegate;
+    private final FutureCallback<T> delegate;
     private final AsyncTraceEntry asyncTraceEntry;
     private final AuxThreadContext auxContext;
 
-    public CallbackWrapper(Callback delegate, AsyncTraceEntry asyncTraceEntry,
+    public FutureCallbackWrapper(FutureCallback<T> delegate, AsyncTraceEntry asyncTraceEntry,
             AuxThreadContext auxContext) {
         this.delegate = delegate;
         this.asyncTraceEntry = asyncTraceEntry;
@@ -37,15 +35,37 @@ public class CallbackWrapper implements Callback {
     }
 
     @Override
-    public void onCompletion(@Nullable RecordMetadata metadata, @Nullable Exception exception) {
-        if (exception == null) {
-            asyncTraceEntry.end();
-        } else {
-            asyncTraceEntry.endWithError(exception);
-        }
+    public void completed(T result) {
+        asyncTraceEntry.end();
         TraceEntry traceEntry = auxContext.start();
         try {
-            delegate.onCompletion(metadata, exception);
+            delegate.completed(result);
+        } catch (Throwable t) {
+            traceEntry.endWithError(t);
+            throw rethrow(t);
+        }
+        traceEntry.end();
+    }
+
+    @Override
+    public void failed(Exception exception) {
+        asyncTraceEntry.endWithError(exception);
+        TraceEntry traceEntry = auxContext.start();
+        try {
+            delegate.failed(exception);
+        } catch (Throwable t) {
+            traceEntry.endWithError(t);
+            throw rethrow(t);
+        }
+        traceEntry.end();
+    }
+
+    @Override
+    public void cancelled() {
+        asyncTraceEntry.end();
+        TraceEntry traceEntry = auxContext.start();
+        try {
+            delegate.cancelled();
         } catch (Throwable t) {
             traceEntry.endWithError(t);
             throw rethrow(t);
@@ -54,7 +74,7 @@ public class CallbackWrapper implements Callback {
     }
 
     private static RuntimeException rethrow(Throwable t) {
-        CallbackWrapper.<RuntimeException>throwsUnchecked(t);
+        FutureCallbackWrapper.<RuntimeException>throwsUnchecked(t);
         throw new AssertionError();
     }
 

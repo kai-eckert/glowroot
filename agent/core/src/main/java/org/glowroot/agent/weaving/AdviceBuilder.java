@@ -174,7 +174,7 @@ class AdviceBuilder {
                 initOnAfterAdvice(adviceClass, adviceMethod);
             }
         }
-        if (adviceClass.collocateInClassLoader()) {
+        if (pointcut.collocate()) {
             PluginClassRenamer pluginClassRenamer = new PluginClassRenamer(adviceClass);
             builder.nonBootstrapLoaderAdviceClass(
                     pluginClassRenamer.buildNonBootstrapLoaderAdviceClass());

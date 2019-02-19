@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,13 +35,14 @@ import org.glowroot.agent.plugin.api.weaving.OnBefore;
 import org.glowroot.agent.plugin.api.weaving.OnReturn;
 import org.glowroot.agent.plugin.api.weaving.OnThrow;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
+import org.glowroot.agent.plugin.httpclient.util.Uris;
 
 // see nearly identical copy of this in WiremockApacheHttpClientAspect
 public class ApacheHttpClientAspect {
 
     @Pointcut(className = "org.apache.http.client.HttpClient", methodName = "execute",
             methodParameterTypes = {"org.apache.http.client.methods.HttpUriRequest", ".."},
-            nestingGroup = "http-client", timerName = "http client request")
+            nestingGroup = "http-client", timerName = "http client request", collocate = true)
     public static class ExecuteAdvice {
         private static final TimerName timerName = Agent.getTimerName(ExecuteAdvice.class);
         @OnBefore
@@ -85,7 +86,7 @@ public class ApacheHttpClientAspect {
     @Pointcut(className = "org.apache.http.client.HttpClient", methodName = "execute",
             methodParameterTypes = {"org.apache.http.HttpHost", "org.apache.http.HttpRequest",
                     ".."},
-            nestingGroup = "http-client", timerName = "http client request")
+            nestingGroup = "http-client", timerName = "http client request", collocate = true)
     public static class ExecuteWithHostAdvice {
         private static final TimerName timerName = Agent.getTimerName(ExecuteWithHostAdvice.class);
         @OnBefore

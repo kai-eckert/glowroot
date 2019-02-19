@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 the original author or authors.
+ * Copyright 2011-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,11 @@ import org.glowroot.agent.plugin.api.util.Beans;
 import org.glowroot.agent.plugin.api.weaving.BindParameter;
 import org.glowroot.agent.plugin.api.weaving.OnAfter;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
-import org.glowroot.agent.plugin.servlet.ServletPluginProperties.SessionAttributePath;
+import org.glowroot.agent.plugin.servlet.collocate.HttpSessions;
+import org.glowroot.agent.plugin.servlet.util.ServletMessageSupplier;
+import org.glowroot.agent.plugin.servlet.util.ServletPluginProperties;
+import org.glowroot.agent.plugin.servlet.util.Strings;
+import org.glowroot.agent.plugin.servlet.util.ServletPluginProperties.SessionAttributePath;
 
 public class SessionAspect {
 

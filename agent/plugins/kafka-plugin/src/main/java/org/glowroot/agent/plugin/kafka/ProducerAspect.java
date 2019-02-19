@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,13 +32,15 @@ import org.glowroot.agent.plugin.api.weaving.OnBefore;
 import org.glowroot.agent.plugin.api.weaving.OnReturn;
 import org.glowroot.agent.plugin.api.weaving.OnThrow;
 import org.glowroot.agent.plugin.api.weaving.Pointcut;
+import org.glowroot.agent.plugin.kafka.collocate.CallbackWrapper;
+import org.glowroot.agent.plugin.kafka.collocate.CallbackWrapperForNullDelegate;
 
 public class ProducerAspect {
 
     @Pointcut(className = "org.apache.kafka.clients.producer.KafkaProducer", methodName = "send",
             methodParameterTypes = {"org.apache.kafka.clients.producer.ProducerRecord",
                     "org.apache.kafka.clients.producer.Callback"},
-            nestingGroup = "kafka-send", timerName = "kafka send")
+            nestingGroup = "kafka-send", timerName = "kafka send", collocate = true)
     public static class SendAdvice {
 
         private static final TimerName timerName = Agent.getTimerName(SendAdvice.class);
