@@ -81,7 +81,7 @@ public class ConfigIT extends WebDriverIT {
         // when
         page.clickEnabledCheckBox();
         page.getReportingUrlTextField().clear();
-        page.getReportingUrlTextField().sendKeys("/abc");
+        page.getReportingUrlTextField().sendKeys("/abc/--glowroot-eum");
         page.clickSaveButton();
         // wait for save to finish
         SECONDS.sleep(1);
@@ -91,7 +91,8 @@ public class ConfigIT extends WebDriverIT {
         globalNavbar.clickConfigLink();
         configSidebar.clickEumLink();
         assertThat(page.getEnabledCheckBoxValue()).isTrue();
-        assertThat(page.getReportingUrlTextField().getAttribute("value")).isEqualTo("abc");
+        assertThat(page.getReportingUrlTextField().getAttribute("value"))
+                .isEqualTo("/abc/--glowroot-eum");
     }
 
     @Test
