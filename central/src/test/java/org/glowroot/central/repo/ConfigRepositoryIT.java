@@ -167,8 +167,7 @@ public class ConfigRepositoryIT {
                 .build();
 
         // when
-        configRepository.updateJvmConfig(agentId, updatedConfig,
-                Versions.getVersion(config));
+        configRepository.updateJvmConfig(agentId, updatedConfig, Versions.getVersion(config));
         config = configRepository.getJvmConfig(agentId);
 
         // then

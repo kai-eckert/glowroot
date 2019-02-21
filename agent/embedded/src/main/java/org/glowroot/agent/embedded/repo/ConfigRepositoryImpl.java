@@ -461,8 +461,7 @@ public class ConfigRepositoryImpl implements ConfigRepository {
             String priorVersion) throws Exception {
         JvmConfig config = JvmConfig.create(protoConfig);
         synchronized (writeLock) {
-            String currVersion =
-                    Versions.getVersion(configService.getJvmConfig().toProto());
+            String currVersion = Versions.getVersion(configService.getJvmConfig().toProto());
             checkVersionsEqual(currVersion, priorVersion);
             configService.updateJvmConfig(config);
         }
