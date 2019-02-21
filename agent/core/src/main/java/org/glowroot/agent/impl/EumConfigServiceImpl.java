@@ -18,7 +18,6 @@ package org.glowroot.agent.impl;
 import java.util.Map;
 
 import com.google.common.collect.MapMaker;
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +25,6 @@ import org.glowroot.agent.config.ConfigService;
 import org.glowroot.agent.plugin.api.config.BooleanProperty;
 import org.glowroot.agent.plugin.api.config.ConfigListener;
 import org.glowroot.agent.plugin.api.config.StringProperty;
-import org.glowroot.common.config.EumConfig;
 
 public class EumConfigServiceImpl
         implements org.glowroot.agent.plugin.api.config.EumConfigService, ConfigListener {
@@ -35,25 +33,22 @@ public class EumConfigServiceImpl
 
     private final ConfigService configService;
 
-    // cache for fast read access
-    // visibility is provided by memoryBarrier in org.glowroot.config.ConfigService
-    private @MonotonicNonNull EumConfig eumConfig;
-
-    private final EnabledPropertyImpl enabledProperty = new EnabledPropertyImpl();
-    private final ReportingUrlPropertyImpl reportingUrlProperty = new ReportingUrlPropertyImpl();
+    private final EnabledPropertyImpl enabledProperty;
+    private final ReportingUrlPropertyImpl reportingUrlProperty;
 
     private final Map<ConfigListener, Boolean> configListeners =
             new MapMaker().weakKeys().makeMap();
 
     public static EumConfigServiceImpl create(ConfigService configService) {
         EumConfigServiceImpl configServiceImpl = new EumConfigServiceImpl(configService);
-        configService.addPluginConfigListener(configServiceImpl);
         configService.addConfigListener(configServiceImpl);
         return configServiceImpl;
     }
 
     private EumConfigServiceImpl(ConfigService configService) {
         this.configService = configService;
+        enabledProperty = new EnabledPropertyImpl(configService);
+        reportingUrlProperty = new ReportingUrlPropertyImpl(configService);
         configListeners.put(enabledProperty, true);
         configListeners.put(reportingUrlProperty, true);
     }
@@ -81,42 +76,55 @@ public class EumConfigServiceImpl
 
     @Override
     public void onChange() {
-        this.eumConfig = configService.getEumConfig();
         for (ConfigListener configListener : configListeners.keySet()) {
             configListener.onChange();
         }
         configService.writeMemoryBarrier();
     }
 
-    private class EnabledPropertyImpl implements BooleanProperty, ConfigListener {
+    private static class EnabledPropertyImpl implements BooleanProperty, ConfigListener {
+
+        private final ConfigService configService;
+
         // visibility is provided by memoryBarrier in outer class
         private boolean value;
-        private EnabledPropertyImpl() {
-            value = eumConfig.enabled();
+
+        private EnabledPropertyImpl(ConfigService configService) {
+            this.configService = configService;
+            value = configService.getEumConfig().enabled();
         }
+
         @Override
         public boolean value() {
             return value;
         }
+
         @Override
         public void onChange() {
-            value = eumConfig.enabled();
+            value = configService.getEumConfig().enabled();
         }
     }
 
-    private class ReportingUrlPropertyImpl implements StringProperty, ConfigListener {
+    private static class ReportingUrlPropertyImpl implements StringProperty, ConfigListener {
+
+        private final ConfigService configService;
+
         // visibility is provided by memoryBarrier in outer class
         private String value;
-        private ReportingUrlPropertyImpl() {
-            value = eumConfig.reportingUrl();
+
+        private ReportingUrlPropertyImpl(ConfigService configService) {
+            this.configService = configService;
+            value = configService.getEumConfig().reportingUrl();
         }
+
         @Override
         public String value() {
             return value;
         }
+
         @Override
         public void onChange() {
-            value = eumConfig.reportingUrl();
+            value = configService.getEumConfig().reportingUrl();
         }
     }
 }
